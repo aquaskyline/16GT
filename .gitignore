@@ -17,13 +17,10 @@
 *.mod
 *.smod
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-
 # Executables
 *.exe
 *.out
 *.app
+
+# Mac OS folder configurations
+.DS_Store
