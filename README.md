@@ -3,6 +3,7 @@
 
 ## Quick start
 > Inputs: genome.fa alignments.bam
+
 > Output: variants.vcf
 
 #### 0. Install
