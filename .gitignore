@@ -24,3 +24,5 @@
 
 # Mac OS folder configurations
 .DS_Store
+.idea
+CMakeLists.txt
