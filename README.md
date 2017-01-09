@@ -14,7 +14,9 @@ make
 ```
 git clone https://github.com/aquaskyline/SOAP3-dp.git
 make SOAP3-Builder
+make BGS-Build
 soap3-dp-builder genome.fa
+BGS-Build genome.fa.index
 ```
 #### 2. Convert BAM to SNAPSHOT
 ```
