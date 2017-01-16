@@ -7,28 +7,10 @@
 #include "dependencies.h"
 #include "FisherExactTest.h"
 
-#define errorJitterStart 3
-#define errorJitterEnd 8
-#define geometricMeanRoot 1.0f
-#define indelDifficultyCoefficient 1.25f
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#define errorJitterStart 5
+#define errorJitterEnd 6
+#define geometricMeanRoot 0.5f
+#define indelDifficultyCoefficient 1.375f
 
 unsigned int gpuGenotype2int[16];
 
@@ -42,28 +24,19 @@ void copySnpPriorToGPU(double *snpPrior) {
   memcpy(gpuSnpPrior, snpPrior, 256 * sizeof(double));
 }
 
-
-
-
 float fisher2tail(int a, int b, int c, int d);
-
 
 float fisher2tail(int n11, int n1_, int n_1, int n) 
 {
-  
-  
-  
-  
-  
-  n += n11 + n1_ + n_1; 
-  n1_ += n11; 
+  n += n11 + n1_ + n_1;
+  n1_ += n11;
   n_1 += n11;
 
-  float poa; 
+  float poa;
   poa = hyper_323(n11, n1_, n_1, n); 
 
   int x;
-  float pox = poa; 
+  float pox = poa;
   float p_twotail = 0;
   p_twotail += poa;
   float poa_e = poa * 1.000000001f;
@@ -84,10 +57,6 @@ float fisher2tail(int n11, int n1_, int n_1, int n)
   return p_twotail;
 
 }
-
-
-
-
 
 int prefill_likelihood_cache_with_p_err(LikelihoodCache *lc, float b_err, float ub_err) {
 
@@ -124,7 +93,6 @@ int prefill_likelihood_cache_with_p_err(LikelihoodCache *lc, float b_err, float 
 
 #ifdef USE_FISHER_LOOKUP_TABLE
 
-
 #define OVERFLOW_EXP 849
 #define RET_EXP_LIMIT -1500
 
@@ -134,10 +102,10 @@ double checkOverflowAndReturn(double ret) {
   int ret_exp;
   frexp(ret, &ret_exp);
   if (ret == .0 || ret_exp - OVERFLOW_EXP < RET_EXP_LIMIT) {
-    
+
     return 0;
   }
-  
+
   double downRet = ret / OVERFLOW_HANDLER;
   if (downRet != .0) {
     return downRet;
@@ -170,7 +138,6 @@ double Likelihood_homo_base(unsigned int W[], int targetChar, int W_total,
   int error0 = W_total * (1.0f - P_err) + 0.5f;
   int error1 = W_total * P_err + 0.5f;
   double homo_base = fisher_homo_base(lc, W[targetChar], error0, W_total);
-  
 
   int ary[11];
   GenerateIntegerArrayFlanking5(W_total - W[targetChar], ary);
@@ -180,9 +147,7 @@ double Likelihood_homo_base(unsigned int W[], int targetChar, int W_total,
     homo_base_e = homo_base_e > tmp ? homo_base_e : tmp;
   }
   double ret = homo_base * OVERFLOW_HANDLER * homo_base_e;
-  
 
-  
   return checkOverflowAndReturn(ret);
 }
 
@@ -192,7 +157,6 @@ double Likelihood_homo_indel(unsigned int W[], int targetChar, int W_total,
   int error0 = W_total * (1.0f - P_err) + 0.5f;
   int error1 = W_total * P_err + 0.5f;
   double homo_indel = fisher_homo_indel(lc, W[targetChar], error0, W_total);
-  
 
   int ary[11];
   GenerateIntegerArrayFlanking5(W_total - W[targetChar], ary);
@@ -202,7 +166,6 @@ double Likelihood_homo_indel(unsigned int W[], int targetChar, int W_total,
     homo_indel_e = homo_indel_e > tmp ? homo_indel_e : tmp;
   }
   double ret = homo_indel * OVERFLOW_HANDLER * homo_indel_e;
-  
 
   return checkOverflowAndReturn(ret);
 }
@@ -210,13 +173,13 @@ double Likelihood_homo_indel(unsigned int W[], int targetChar, int W_total,
 double Likelihood_het_base(unsigned int W[], int targetChar1, int targetChar2, int W_total,
                            double P_err_s, double P_err_i, LikelihoodCache *lc) {
   double P_err = 2 * P_err_s + 2 * P_err_i;
-  int error0 = W_total * (0.5f - P_err) + 0.5f;
-  int error1 = W_total * P_err + 0.5f;
+  double P_err_half = P_err * 0.5f;
+  int error0 = W_total * (0.5f - P_err_half) + 0.5f;
+  int error1 = W_total * P_err_half + 0.5f;
   int W_total_half = W_total * 0.5f + 0.5f;
 
   double het_base_1 = fisher_het_base(lc, W[targetChar1], error0, W_total_half);
   double het_base_2 = fisher_het_base(lc, W[targetChar2], error0, W_total_half);
-  
 
   int ary[11];
   GenerateIntegerArrayFlanking5(W_total - W[targetChar1] - W[targetChar2], ary);
@@ -225,12 +188,8 @@ double Likelihood_het_base(unsigned int W[], int targetChar1, int targetChar2, i
     double tmp = fisher_het_base_e(lc, ary[i], error1, W_total);
     het_base_e = het_base_e > tmp ? het_base_e : tmp;
   }
-  
-  
-  
-  double ret = pow(het_base_1, geometricMeanRoot) * pow(het_base_2, geometricMeanRoot) * OVERFLOW_HANDLER * het_base_e;
 
-  
+  double ret = pow(het_base_1, geometricMeanRoot) * pow(het_base_2, geometricMeanRoot) * OVERFLOW_HANDLER * het_base_e;
 
   return checkOverflowAndReturn(ret);
 }
@@ -238,13 +197,13 @@ double Likelihood_het_base(unsigned int W[], int targetChar1, int targetChar2, i
 double Likelihood_het_indel_1(unsigned int W[], int targetChar1, int targetChar2, int W_total,
                               double P_err_s, double P_err_i, LikelihoodCache *lc) {
   double P_err = 3 * P_err_s + P_err_i;
-  int error0 = W_total * (0.5f - P_err) + 0.5f;
-  int error1 = W_total * P_err + 0.5f;
+  double P_err_half = P_err * 0.5f;
+  int error0 = W_total * (0.5f - P_err_half) + 0.5f;
+  int error1 = W_total * P_err_half + 0.5f;
   int W_total_half = W_total * 0.5f + 0.5f;
 
   double het_indel_1_char1 = fisher_het_indel_1(lc, W[targetChar1], error0, W_total_half);
   double het_indel_1_char2 = fisher_het_indel_2(lc, W[targetChar2], error0, W_total_half);
-  
 
   int ary[11];
   GenerateIntegerArrayFlanking5(W_total - W[targetChar1] - W[targetChar2], ary);
@@ -253,9 +212,7 @@ double Likelihood_het_indel_1(unsigned int W[], int targetChar1, int targetChar2
     double tmp = fisher_het_indel_e_1(lc, ary[i], error1, W_total);
     het_indel_e_1 = het_indel_e_1 > tmp ? het_indel_e_1 : tmp;
   }
-  
-  
-  
+
   double ret =
       pow(het_indel_1_char1, geometricMeanRoot) * pow(het_indel_1_char2, geometricMeanRoot) * OVERFLOW_HANDLER *
       het_indel_e_1;
@@ -266,13 +223,13 @@ double Likelihood_het_indel_1(unsigned int W[], int targetChar1, int targetChar2
 double Likelihood_het_indel_2(unsigned int W[], int targetChar1, int targetChar2, int W_total, double P_err_s,
                               LikelihoodCache *lc) {
   double P_err = 4 * P_err_s;
-  int error0 = W_total * (0.5f - P_err) + 0.5f;
-  int error1 = W_total * P_err + 0.5f;
+  double P_err_half = P_err * 0.5f;
+  int error0 = W_total * (0.5f - P_err_half) + 0.5f;
+  int error1 = W_total * P_err_half + 0.5f;
   int W_total_half = W_total * 0.5f + 0.5f;
 
   double het_indel_2_char1 = fisher_het_indel_2(lc, W[targetChar1], error0, W_total_half);
   double het_indel_2_char2 = fisher_het_indel_2(lc, W[targetChar2], error0, W_total_half);
-  
 
   int ary[11];
   GenerateIntegerArrayFlanking5(W_total - W[targetChar1] - W[targetChar2], ary);
@@ -282,9 +239,6 @@ double Likelihood_het_indel_2(unsigned int W[], int targetChar1, int targetChar2
     het_indel_e_2 = het_indel_e_2 > tmp ? het_indel_e_2 : tmp;
   }
 
-  
-  
-  
   double ret =
       pow(het_indel_2_char1, geometricMeanRoot) * pow(het_indel_2_char2, geometricMeanRoot) * OVERFLOW_HANDLER *
       het_indel_e_2;;
