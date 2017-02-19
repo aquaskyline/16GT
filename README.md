@@ -11,7 +11,7 @@
 git clone https://github.com/aquaskyline/16GT
 make
 ```
-#### 1. Build reference index (optional)
+#### 1. Build reference index
 ```
 git clone https://github.com/aquaskyline/SOAP3-dp.git
 make SOAP3-Builder
@@ -28,6 +28,13 @@ bam2snapshot -i genome.fa.index -b alignments.bam -o output/prefix
 snapshotSnpcaller -i genome.fa.index -o output/prefix
 perl txt2vcf.pl output/prefix.txt sampleName genome.fa > variants.vcf
 perl filterVCF.pl variants.vcf > variants.filtered.vcf
+```
+
+#### Exome variant calling
+```
+RegionIndexBuilder genome.fa.index region.bed region.bin -bed/-gff
+bam2snapshot -i genome.fa.index -b alignments.bam -o output/prefix -e region.bin
+snapshotSnpcaller -i genome.fa.index -o output/prefix -e region.bin
 ```
 
 ## License
