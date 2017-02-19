@@ -42,26 +42,26 @@ print '##fileformat=VCFv4.1'."\n";
 print '##FILTER=<ID=LowQual,Description="Low quality">'."\n";
 print '##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">'."\n";
 print '##FORMAT=<ID=AD,Number=.,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">'."\n";
-print '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth (reads with MQ<=13 were filtered)">'."\n";
+print '##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Read depth">'."\n";
 print '##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">'."\n";
 print '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">'."\n";
 print '##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">'."\n";
 print '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">'."\n";
 print '##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">'."\n";
 print '##INFO=<ID=FRAC,Number=1,Type=Float,Description="Alternative allele fraction">'."\n";
-print '##INFO=<ID=BQFisherPhredRef,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of ref Vs. perfect base qualities">'."\n";
-print '##INFO=<ID=BQFisherPhredAlt,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt Vs. perfect base qualities">'."\n";
-print '##INFO=<ID=BQFisherPhredAlt2,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt2 Vs. perfect base qualities">'."\n";
+print '##INFO=<ID=BQFisherPhredRef,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of ref vs. perfect base qualities">'."\n";
+print '##INFO=<ID=BQFisherPhredAlt,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt vs. perfect base qualities">'."\n";
+print '##INFO=<ID=BQFisherPhredAlt2,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt2 vs. perfect base qualities">'."\n";
 print '##INFO=<ID=BestGT,Number=1,Type=String,Description="Best Genotype among the 16 candidate">'."\n";
-print '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth; reads with MQ<=13 were filtered">'."\n";
-print '##INFO=<ID=DP4,Number=4,Type=Integer,Description="Read depth of A,C,G,T; reads with MQ<=13 were filtered">'."\n";
-print '##INFO=<ID=DP8,Number=8,Type=Integer,Description="Read depth of A+,A-,C+,C-,G+,G-,T+,T-; reads with MQ<=13 were filtered">'."\n";
+print '##INFO=<ID=DP,Number=1,Type=Integer,Description="Total read depth">'."\n";
+print '##INFO=<ID=DP4,Number=4,Type=Integer,Description="Read depth of A,C,G,T">'."\n";
+print '##INFO=<ID=DP8,Number=8,Type=Integer,Description="Read depth of A+,A-,C+,C-,G+,G-,T+,T-">'."\n";
 print '##INFO=<ID=INDEL,Number=0,Type=Flag,Description="Genotype with Indel at the genome position">'."\n";
 print '##INFO=<ID=IndelMeta,Number=8,Type=String,Description="Details of the deepest and second deepest Indel of the position. Format: OptMode/OptPattern/OptHQ/OptLQ/SubOptMode/SubOptPattern/SubOptHQ/SubOptLQ">'."\n";
-print '##INFO=<ID=ILDP,Number=1,Type=Integer,Description="Reads supporting the Indel patterns with average base quality<=13; reads with MQ<=13 were filtered">'."\n";
-print '##INFO=<ID=IHDP,Number=1,Type=Integer,Description="Reads supporting the Indel patterns with average base quality>13; reads with MQ<=13 were filtered">'."\n";
-print '##INFO=<ID=LeftG,Number=1,Type=Integer,Description="# of consecutive base G on the left of the Indel (+strand)">'."\n";
-print '##INFO=<ID=RightG,Number=1,Type=Integer,Description="# of consecutive base G on the right of the Indel (+strand)">'."\n";
+print '##INFO=<ID=ILDP,Number=1,Type=Integer,Description="Reads supporting the Indel patterns with average base quality<=13">'."\n";
+print '##INFO=<ID=IHDP,Number=1,Type=Integer,Description="Reads supporting the Indel patterns with average base quality>13">'."\n";
+print '##INFO=<ID=LeftG,Number=1,Type=Integer,Description="# of consecutive base G on the left of the Indel">'."\n";
+print '##INFO=<ID=RightG,Number=1,Type=Integer,Description="# of consecutive base G on the right of the Indel">'."\n";
 print '##INFO=<ID=HRun,Number=1,Type=Integer,Description="Largest Contiguous Homopolymer Run of Variant Allele In Either Direction">'."\n";
 print '##INFO=<ID=QD,Number=1,Type=Float,Description="Variant (Confidence/Quality) by Depth">'."\n";
 print '##INFO=<ID=SBFisherPhredRef,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test to detect strand bias of ref allele">'."\n";
@@ -327,7 +327,7 @@ while($l=<$ascInputFH>)
       {
         $rciAlt = $Rci{$altBase};
         $rciRef = $Rci{$refBase};
-        $DP -= int(($strandCountAggregate[$rciRef] + $totalHQCount + $totalLQCount)/2);
+        $DP -= int($strandCountAggregate[$rciRef]/2);
         $AC = "1";
         $AF = 0.500;
         $FRAC = $strandCountAggregate[$rciAlt] / ($strandCountAggregate[$rciAlt] + $strandCountAggregate[$rciRef]);
@@ -473,7 +473,7 @@ while($l=<$ascInputFH>)
           $GT = "0/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
           $DPF = $DP; $GQ = int($QD+0.499);
           $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase[1]"}]), phred($probGT[$GTci{"$altBase[1]$altBase[1]"}]));
-          $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+          $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
           if($indelMode=~/I$/)
           {
             $refPattern = "$preRefBase";
@@ -510,7 +510,7 @@ while($l=<$ascInputFH>)
           $GT = "0/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
           $DPF = $DP; $GQ = int($QD+0.499);
           $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase[0]"}]), phred($probGT[$GTci{"$altBase[0]$altBase[0]"}]));
-          $INFO = sprintf("AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+          $INFO = sprintf("AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
           $FORMAT = sprintf("%s:%s:%d:%d:%s", $GT, $AD, $DPF, $GQ, $PL);
 
           if ((substr($ref{$chr}, ($pos-1), length($refBase))) ne $refBase)
