@@ -1,7 +1,7 @@
 #!/usr/bin/perl -w
 
-use Cwd 'abs_path';
-use lib abs_path($0)."/lib";
+use File::Basename;
+use lib dirname($0)."/lib";
 use Inline C;
 use Data::Dumper;
 
@@ -48,6 +48,7 @@ print '##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scal
 print '##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in genotypes, for each ALT allele, in the same order as listed">'."\n";
 print '##INFO=<ID=AF,Number=A,Type=Float,Description="Allele Frequency, for each ALT allele, in the same order as listed">'."\n";
 print '##INFO=<ID=AN,Number=1,Type=Integer,Description="Total number of alleles in called genotypes">'."\n";
+print '##INFO=<ID=FRAC,Number=1,Type=Float,Description="Alternative allele fraction">'."\n";
 print '##INFO=<ID=BQFisherPhredRef,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of ref Vs. perfect base qualities">'."\n";
 print '##INFO=<ID=BQFisherPhredAlt,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt Vs. perfect base qualities">'."\n";
 print '##INFO=<ID=BQFisherPhredAlt2,Number=1,Type=Float,Description="Phred-scaled p-value using Fisher\'s exact test of alt2 Vs. perfect base qualities">'."\n";
@@ -87,9 +88,6 @@ while($l=<$ascInputFH>)
   $altGT = $altBase = $a[20];
   $optProb = $a[21];
   $subOptProb = $a[22];
-  #$probD = $a[23];
-  #$rfProb = $a[24];
-  #$rfMode = $a[25];
   $indelMode = $a[26];
   $indelPattern = $a[27];
   $indelHQCount = $a[28];
@@ -101,7 +99,6 @@ while($l=<$ascInputFH>)
   $totalDepth = $a[34];
   @depth = @a[35..38];
   @strandCount = @a[39..46];
-  #@orgProbGT = @a[47..62];
   @strandBias = @a[63..66];
   @strandBiasLeft = @a[67..70];
   @strandBiasRight = @a[71..74];
@@ -139,7 +136,7 @@ while($l=<$ascInputFH>)
     $altBase =~ s/$refBase//; $altBase =~ s/(.*)\1/$1/g; @altBase = split //,$altBase;
     $filter = "."; # TODO
     $AC = ""; $AF = ""; $AN = 2;
-    $FSRef = $FSAlt = $FSAlt2 = $QD = $SBRef = $SBAlt = $SBAlt2 = $BaseQFisherRef = $BaseQFisherAlt = $BaseQFisherAlt2 = 0;
+    $FRAC = $FSRef = $FSAlt = $FSAlt2 = $QD = $SBRef = $SBAlt = $SBAlt2 = $BaseQFisherRef = $BaseQFisherAlt = $BaseQFisherAlt2 = 0;
     $OptSuboptRatio = ($subOptProb==0)?($flt_max):($optProb/$subOptProb);
     $OptSuboptRatio = phred2($OptSuboptRatio);
     $GT = $AD = $DPF = $GQ = $PL = "";
@@ -171,7 +168,7 @@ while($l=<$ascInputFH>)
       $GT = "1/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
       $DPF = $DP; $GQ = int($QD+0.499);
       $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase"}]), phred($probGT[$GTci{"$altBase$altBase"}]));
-      $INFO = sprintf("AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+      $INFO = sprintf("AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
     }
     else
     {
@@ -181,6 +178,7 @@ while($l=<$ascInputFH>)
         $rciRef = $Rci{$refBase};
         $AC = "1";
         $AF = 0.500;
+        $FRAC = $strandCountAggregate[$rciAlt] / ($strandCountAggregate[$rciAlt]+$strandCountAggregate[$rciRef]);
         $BaseQFisherRef = phred($baseQualityBias[$rciRef]);
         $BaseQFisherAlt = phred($baseQualityBias[$rciAlt]);
         $FSRef = phred($strandBias[$rciRef]);
@@ -199,17 +197,14 @@ while($l=<$ascInputFH>)
         $GT = "0/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
         $DPF = $DP; $GQ = int($QD+0.499);
         $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase"}]), phred($probGT[$GTci{"$altBase$altBase"}]));
-        $INFO = sprintf("AC=%s;AF=%s;AN=%d;BQFisherPhredRef=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredRef=%d;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherRef, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSRef, $FSAlt, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+        $INFO = sprintf("AC=%s;AF=%s;AN=%d;FRAC=%.3f;BQFisherPhredRef=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredRef=%d;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $FRAC, $BaseQFisherRef, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSRef, $FSAlt, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
       }
       elsif(scalar (@altBase) == 2)
       {
         $rciAlt0 = $Rci{$altBase[0]};
         $rciAlt1 = $Rci{$altBase[1]};
-        #$DP = $strandCountAggregate[$rciAlt0] + $strandCountAggregate[$rciAlt1];
         $AC = "1,1";
-        #$AF = sprintf("%.3f,%.3f", $strandCountAggregate[$rciAlt0]/$DP, $strandCountAggregate[$rciAlt1]/$DP);
         $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
-        #$baseQFisher = &fisher($strandCountAggregate[$rciAlt0], $depth[$rciAlt0], $strandCountAggregate[$rciAlt1], $depth[$rciAlt1]);
         $BaseQFisherAlt = phred($baseQualityBias[$rciAlt0]);
         $BaseQFisherAlt2 = phred($baseQualityBias[$rciAlt1]);
         $FSAlt = phred($strandBias[$rciAlt0]);
@@ -228,7 +223,7 @@ while($l=<$ascInputFH>)
         $GT = "1/2"; $AD = "$strandCountAggregate[$Rci{$refBase}],$strandCountAggregate[$rciAlt0],$strandCountAggregate[$rciAlt1]";
         $DPF = $DP; $GQ = int($QD+0.499);
         $PL = sprintf("%d,%d,%d,%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase[0]"}]), phred($probGT[$GTci{"$refBase$altBase[1]"}]), phred($probGT[$GTci{"$altBase[0]$altBase[0]"}]), phred($probGT[$GTci{"$altBase[0]$altBase[1]"}]), phred($probGT[$GTci{"$altBase[1]$altBase[1]"}]));
-        $INFO = sprintf("AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BQFisherPhredAlt2=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;SBFisherPhredAlt2=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $BaseQFisherAlt2, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $FSAlt2, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+        $INFO = sprintf("AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BQFisherPhredAlt2=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;SBFisherPhredAlt2=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;SOR=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $BaseQFisherAlt2, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $FSAlt2, $QD, $ReadPosBias, $DepthBalance, $SOR, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
       }
       else { die "$.: \@altBase != 1 and != 2 in Het.\n"; }
     }
@@ -237,7 +232,6 @@ while($l=<$ascInputFH>)
 
     if ((substr($ref{$chr}, ($pos-1), length($refBase))) ne $refBase)
     {
-      #print STDERR "Type 1: ".(substr($ref{$chr}, ($pos-1), length($refBase)))." ne $refBase\n";
       next;
     }
 
@@ -276,7 +270,7 @@ while($l=<$ascInputFH>)
     $altBase =~ s/$refBase//; $altBase =~ s/(.*)\1/$1/g; @altBase = split //,$altBase;
     $filter = "."; # TODO
     $AC = ""; $AF = ""; $AN = 2;
-    $FSRef = $FSAlt = $FSAlt2 = $QD = $SBRef = $SBAlt = $SBAlt2 = $BaseQFisherRef = $BaseQFisherAlt = $BaseQFisherAlt2 = 0;
+    $FRAC = $FSRef = $FSAlt = $FSAlt2 = $QD = $SBRef = $SBAlt = $SBAlt2 = $BaseQFisherRef = $BaseQFisherAlt = $BaseQFisherAlt2 = 0;
     $OptSuboptRatio = ($subOptProb==0)?($flt_max):($optProb/$subOptProb);
     $OptSuboptRatio = phred2($OptSuboptRatio);
     $GT = $AD = $DPF = $GQ = $PL = "";
@@ -301,7 +295,7 @@ while($l=<$ascInputFH>)
       $GT = "1/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
       $DPF = $DP; $GQ = int($QD+0.499);
       $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase"}]), phred($probGT[$GTci{"$altBase$altBase"}]));
-      $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+      $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
       if($indelMode=~/I$/)
       {
         $refPattern = "$preRefBase";
@@ -319,7 +313,6 @@ while($l=<$ascInputFH>)
 
       if ((substr($ref{$chr}, ($pos-1), length($refPattern))) ne $refPattern)
       {
-        #print STDERR "Type 2: ".(substr($ref{$chr}, ($pos-1), length($refPattern)))." ne $refPattern\n";
         next;
       }
 
@@ -337,6 +330,7 @@ while($l=<$ascInputFH>)
         $DP -= int(($strandCountAggregate[$rciRef] + $totalHQCount + $totalLQCount)/2);
         $AC = "1";
         $AF = 0.500;
+        $FRAC = $strandCountAggregate[$rciAlt] / ($strandCountAggregate[$rciAlt] + $strandCountAggregate[$rciRef]);
         $FSRef = phred($strandBias[$rciRef]);
         $BaseQFisherRef = phred($baseQualityBias[$rciRef]);
         $FSAlt = phred($strandBias[$rciAlt]);
@@ -346,7 +340,7 @@ while($l=<$ascInputFH>)
         $GT = "0/1"; $AD = "$strandCountAggregate[$rciRef],$strandCountAggregate[$rciAlt]";
         $DPF = $DP; $GQ = int($QD+0.499);
         $PL = sprintf("%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase"}]), phred($probGT[$GTci{"$altBase$altBase"}]));
-        $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;BQFisherPhredRef=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredRef=%d;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherRef, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSRef, $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+        $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;FRAC=%.3f;BQFisherPhredRef=%d;BQFisherPhredAlt=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredRef=%d;SBFisherPhredAlt=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $FRAC, $BaseQFisherRef, $BaseQFisherAlt, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSRef, $FSAlt, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
         if($indelMode=~/I$/)
         {
           $refPattern = "$preRefBase";
@@ -364,7 +358,6 @@ while($l=<$ascInputFH>)
 
         if ((substr($ref{$chr}, ($pos-1), length($refPattern))) ne $refPattern)
         {
-          #print STDERR "Type 3: ".(substr($ref{$chr}, ($pos-1), length($refPattern)))." ne $refPattern\n";
           next;
         }
 
@@ -392,10 +385,8 @@ while($l=<$ascInputFH>)
           $DPF = $DP; $GQ = int($QD+0.499);
           $refY = $YY = 0;
           $PL = sprintf("%d,%d,%d,%d,%d,%d", phred($probGT[$GTci{"$refBase$refBase"}]), phred($probGT[$GTci{"$refBase$altBase[0]"}]), phred($refY), phred($probGT[$GTci{"$altBase[0]$altBase[0]"}]), phred($probGT[$GTci{"$altBase[0]$altBase[1]"}]), phred($YY));
-          # TODO: Logic to be simplified
           if($altBase[0]=~/[ACGT]/ && $altGT!~/^XY$/)
           {
-            #$AF = sprintf("%.3f,%.3f", ($indelHQCount + $indelLQCount)/$DP, $strandCountAggregate[$rciAlt]/$DP);
             $AF = 0.500;
             if($indelMode=~/D$/)
             {
@@ -416,7 +407,6 @@ while($l=<$ascInputFH>)
             {
               if(length($indelPattern) > length($indelPattern2))
               {
-                #$AF = sprintf("%.3f,%.3f", ($indelHQCount + $indelLQCount)/$DP, ($indelHQCount2 + $indelLQCount2)/$DP);
                 $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
                 $refPattern = "$preRefBase$indelPattern";
                 die "$.: Unable to substract $indelPattern2 from $indelPattern.\n" unless(($tmpIndelPattern = $indelPattern) =~ s/$indelPattern2//);
@@ -424,7 +414,6 @@ while($l=<$ascInputFH>)
               }
               elsif(length($indelPattern2) > length($indelPattern))
               {
-                #$AF = sprintf("%.3f,%.3f", ($indelHQCount2 + $indelLQCount2)/$DP, ($indelHQCount + $indelLQCount)/$DP);
                 $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
                 $refPattern = "$preRefBase$indelPattern2";
                 die "$.: Unable to substract $indelPattern from $indelPattern2.\n" unless(($tmpIndelPattern2 = $indelPattern2) =~ s/$indelPattern//);
@@ -435,21 +424,18 @@ while($l=<$ascInputFH>)
             }
             elsif($indelMode=~/I$/ && $indelMode2=~/I$/)
             {
-              #$AF = sprintf("%.3f,%.3f", ($indelHQCount + $indelLQCount)/$DP, ($indelHQCount2 + $indelLQCount2)/$DP);
               $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
               $refPattern = "$preRefBase";
               $altPattern = "$preRefBase$indelPattern,$preRefBase$indelPattern2";
             }
             elsif($indelMode=~/I$/ && $indelMode2=~/D$/)
             {
-              #$AF = sprintf("%.3f,%.3f", ($indelHQCount2 + $indelLQCount2)/$DP, ($indelHQCount + $indelLQCount)/$DP);
               $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
               $refPattern = "$preRefBase$indelPattern2";
               $altPattern = "$preRefBase,$preRefBase$indelPattern2$indelPattern";
             }
             elsif($indelMode=~/D$/ && $indelMode2=~/I$/)
             {
-              #$AF = sprintf("%.3f,%.3f", ($indelHQCount + $indelLQCount)/$DP, ($indelHQCount2 + $indelLQCount2)/$DP);
               $AF = sprintf("%.3f,%.3f", 0.500, 0.500);
               $refPattern = "$preRefBase$indelPattern";
               $altPattern = "$preRefBase,$preRefBase$indelPattern$indelPattern2";
@@ -460,12 +446,11 @@ while($l=<$ascInputFH>)
           else
           { die "$.: Unknown alternative genotype: $altGT\n"; }
 
-          $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;BQFisherPhredAlt=%d;BQFisherPhredAlt2=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;SBFisherPhredAlt2=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $BaseQFisherAlt2, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $FSAlt2, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
+          $INFO = sprintf("INDEL;AC=%s;AF=%s;AN=%d;FRAC=1.000;BQFisherPhredAlt=%d;BQFisherPhredAlt2=%d;BestGT=%s;DP=%d;DP4=%s;DP8=%s;IndelMeta=%s;SBFisherPhredAlt=%d;SBFisherPhredAlt2=%d;QD=%.3f;ReadPosBias=%.5f;DepthBias=%.5f;LeftGCPercent=%d;RightGCPercent=%d;LeftQuality=%d;RightQuality=%d;OptSuboptRatio=%d;LeftG=%d;RightG=%d;HRun=%d;IHDP=%d;ILDP=%d", $AC, $AF, $AN, $BaseQFisherAlt, $BaseQFisherAlt2, $altGT, $DP, join(",", @strandCountAggregate[0..3]), join(",", @strandCount[0..7]), join(",", $indelMode, $indelPattern, $indelHQCount, $indelLQCount, $indelMode2, $indelPattern2, $indelHQCount2, $indelLQCount2), $FSAlt, $FSAlt2, $QD, $ReadPosBias, $DepthBalance, $LeftGCPercent, $RightGCPercent, $LeftQuality, $RightQuality, $OptSuboptRatio, $LeftGBaseCount, $RightGBaseCount, $polyRunCount, $totalHQCount, $totalLQCount);
           $FORMAT = sprintf("%s:%s:%d:%d:%s", $GT, $AD, $DPF, $GQ, $PL);
 
           if ((substr($ref{$chr}, ($pos-1), length($refPattern))) ne $refPattern)
           {
-            #print STDERR "Type 4: ".(substr($ref{$chr}, ($pos-1), length($refPattern)))." ne $refPattern\n";
             next;
           }
 
@@ -505,7 +490,6 @@ while($l=<$ascInputFH>)
 
           if ((substr($ref{$chr}, ($pos-1), length($refPattern))) ne $refPattern)
           {
-            #print STDERR "Type 5: ".(substr($ref{$chr}, ($pos-1), length($refPattern)))." ne $refPattern\n";
             goto NEXTALLELE;
           }
 
@@ -518,7 +502,6 @@ while($l=<$ascInputFH>)
           $rciAlt = $Rci{$altBase[0]};
           $rciRef = $Rci{$refBase};
           $AC = "1";
-          #$AF = sprintf("%.3f", $strandCountAggregate[$rciAlt]/$DP);
           $AF = 0.500;
           $BaseQFisherAlt = phred($baseQualityBias[$rciAlt]);
           $FSAlt = phred($strandBias[$rciAlt]);
@@ -532,7 +515,6 @@ while($l=<$ascInputFH>)
 
           if ((substr($ref{$chr}, ($pos-1), length($refBase))) ne $refBase)
           {
-            #print STDERR "Type 6: ".(substr($ref{$chr}, ($pos-1), length($refBase)))." ne $refBase\n";
             next;
           }
 
