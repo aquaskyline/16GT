@@ -63,7 +63,7 @@ foreach my $fn (@files2bFiltered)
     if($ofn=~s/\.vcf$//) {}
     elsif($ofn=~s/\.vcf.gz$//) {}
     $ofn .= ".filtered.vcf";
-    open $ofh, "$ofn" or die "$!";
+    open $ofh, ">$ofn" or die "$!";
     select $ofh;
   }
 
