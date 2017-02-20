@@ -14,18 +14,37 @@ my $defMinStrandCount = 1;
 my $defMinQDSNP = 24;
 my $defMinQDINDEL = 20;
 
-if(not defined $ARGV[0])
+if(not defined $ARGV[1])
 {
-  print STDERR "perl $0 <16GT VCF Input> [Min QUAL, $defMinQual] [Min FRAC SNP, $defMinFracSNP] [Min FRAC INDEL, $defMinFracINDEL] [Max SOR SNP, $defMaxSORSNP] [Max FS INDEL, $defMaxFSINDEL] [Min DP, $defMinDP] [Max DP Multiplier, meanDP+FLOAT*sqrt(meanDP), $defMaxDPMultiplier] [Min Strand Count, $defMinStrandCount] [Min QD SNP, $defMinQDSNP] [Min QD INDEL, $defMinQDINDEL]\n"; exit;
+  print STDERR "perl $0 <16GT VCF Input> <dbSNP VCF Input> [Min QUAL, $defMinQual] [Min FRAC SNP, $defMinFracSNP] [Min FRAC INDEL, $defMinFracINDEL] [Max SOR SNP, $defMaxSORSNP] [Max FS INDEL, $defMaxFSINDEL] [Min DP, $defMinDP] [Max DP Multiplier, meanDP+FLOAT*sqrt(meanDP), $defMaxDPMultiplier] [Min Strand Count, $defMinStrandCount] [Min QD SNP, $defMinQDSNP] [Min QD INDEL, $defMinQDINDEL]\n"; exit;
 }
 
 my $fh;
 unless(-e $ARGV[0]) { die "Failed to open $ARGV[0], exiting...\n"; }
+unless(-e $ARGV[1]) { die "Failed to open $ARGV[1], exiting...\n"; }
+
 open $fh, "gzip -dcf $ARGV[0] |";
-print STDERR "Loading $ARGV[0]...\n";
+print STDERR "Loading VCF $ARGV[0]...\n";
 my @lines = <$fh>;
 close $fh;
 print STDERR "Loaded ".scalar(@lines)." lines from $ARGV[0]\n";
+
+my %dbSNP = ();
+open $fh, "gzip -dcf $ARGV[1] |";
+print STDERR "Loading dbSNP $ARGV[1]...\n";
+while(my $l = <$fh>)
+{
+  next if $l =~ /^#/;
+  my @F = split /\t/, $l;
+  my @alts = split /,/, $F[4];
+  foreach my $alt (@alts)
+  {
+    my $key = "$F[0]-$F[1]-$F[3]-$alt";
+    $dbSNP{$key} = $F[2];
+  }
+}
+close $fh;
+print STDERR "Loaded ".scalar(keys %dbSNP)." dbSNP entries from $ARGV[1]\n";
 
 my $meanDP = 0;
 {
@@ -51,18 +70,18 @@ my $meanDP = 0;
   print STDERR "Mean DP: $meanDP\n";
 }
 
-my $minQual = defined $ARGV[1] ? $ARGV[1] : $defMinQual;
-my $minFracSNP = defined $ARGV[2] ? $ARGV[2] : $defMinFracSNP;
-my $minFracINDEL = defined $ARGV[3] ? $ARGV[3] : $defMinFracINDEL;
-my $maxSORSNP = defined $ARGV[4] ? $ARGV[4] : $defMaxSORSNP;
-my $maxFSINDEL = defined $ARGV[5] ? $ARGV[5] : $defMaxFSINDEL;
-my $minDP = defined $ARGV[6] ? $ARGV[6] : $defMinDP;
-my $maxDPMultiplier = defined $ARGV[7] ? $ARGV[7] : $defMaxDPMultiplier;
+my $minQual = defined $ARGV[2] ? $ARGV[2] : $defMinQual;
+my $minFracSNP = defined $ARGV[3] ? $ARGV[3] : $defMinFracSNP;
+my $minFracINDEL = defined $ARGV[4] ? $ARGV[4] : $defMinFracINDEL;
+my $maxSORSNP = defined $ARGV[5] ? $ARGV[5] : $defMaxSORSNP;
+my $maxFSINDEL = defined $ARGV[6] ? $ARGV[6] : $defMaxFSINDEL;
+my $minDP = defined $ARGV[7] ? $ARGV[7] : $defMinDP;
+my $maxDPMultiplier = defined $ARGV[8] ? $ARGV[8] : $defMaxDPMultiplier;
 my $maxDP = $meanDP + $maxDPMultiplier * sqrt($meanDP);
 $maxDP = int($maxDP + 0.51);
-my $minStrandCount = defined $ARGV[8] ? $ARGV[8] : $defMinStrandCount;
-my $minQDSNP = defined $ARGV[9] ? $ARGV[9] : $defMinQDSNP;
-my $minQDINDEL = defined $ARGV[10] ? $ARGV[10] : $defMinQDINDEL;
+my $minStrandCount = defined $ARGV[9] ? $ARGV[9] : $defMinStrandCount;
+my $minQDSNP = defined $ARGV[10] ? $ARGV[10] : $defMinQDSNP;
+my $minQDINDEL = defined $ARGV[11] ? $ARGV[11] : $defMinQDINDEL;
 
 print STDERR "Parameters:\n";
 print STDERR "Min Qual: $minQual\n";
@@ -156,10 +175,26 @@ foreach my $l (@lines)
         if($flag == 1) { push @filterTag, "SClow"; }
       } else { die "no DP8 tag: $a[7]"; }
     }
+
+    my @alts = split /,/, $a[4];
+    my %rsID = ();
+    foreach my $alt (@alts)
+    {
+      my $key = "$a[0]-$a[1]-$a[3]-$alt";
+      if(defined $dbSNP{$key})
+      {
+        $rsID{$dbSNP{$key}} = 1;
+      }
+    }
+    if(scalar(keys %rsID) > 0)
+    {
+      $a[2] = join ",", (keys %rsID);
+    }
+
     if(scalar(@filterTag) == 0)
-    { print "$l"; $typeSummary{"."}++; }
+    { print join "\t", @a; print "\n"; $typeSummary{"."}++; }
     elsif($a[2] ne ".")
-    { print "$l"; $typeSummary{"dbSNP"}++; }
+    { print join "\t", @a; print "\n"; $typeSummary{"dbSNP"}++; }
     else
     { $a[6] = join ",", @filterTag; print join "\t", @a; print "\n"; $typeSummary{"$a[6]"}++; }
 
@@ -167,8 +202,8 @@ foreach my $l (@lines)
   }
 }
 
-foreach(sort keys %typeSummary)
-{ print STDERR "$_: $typeSummary{$_}\n"};
+#foreach(sort keys %typeSummary)
+#{ print STDERR "$_: $typeSummary{$_}\n"};
 
 print STDERR "Done!\n";
 
