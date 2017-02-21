@@ -10,6 +10,7 @@
 ```
 git clone https://github.com/aquaskyline/16GT
 make
+# Tested in Ubuntu 14.04 and CentOS 6.7 with GCC 4.7.2
 ```
 #### 1. Build reference index
 ```
@@ -30,7 +31,10 @@ perl txt2vcf.pl output/prefix.txt sampleName genome.fa > variants.vcf
 perl filterVCF.pl variants.vcf > variants.filtered.vcf
 ```
 
-#### Exome variant calling
+## Exome variant calling
+> Inputs: genome.fa alignement.bam region.bed
+
+> Outputs: region.bin variants.vcf
 ```
 RegionIndexBuilder genome.fa.index region.bed region.bin -bed/-gff
 bam2snapshot -i genome.fa.index -b alignments.bam -o output/prefix -e region.bin
