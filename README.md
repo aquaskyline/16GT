@@ -2,9 +2,7 @@
 16GT is a variant caller utilizing a 16-genotype probabilistic model to unify SNP and indel calling in a single algorithm.
 
 ## Quick start
->
-Inputs: genome.fa alignments.bam
-Output: variants.vcf
+> Inputs: genome.fa alignments.bam, Output: variants.vcf
 
 #### 0. Install
 ```
@@ -34,9 +32,7 @@ perl filterVCF.pl variants.vcf > variants.filtered.vcf
 ```
 
 ## Exome variant calling
->
-Inputs: genome.fa alignement.bam region.bed
-Outputs: region.bin variants.vcf
+> Inputs: genome.fa alignement.bam region.bed, Outputs: region.bin variants.vcf
 
 ```
 RegionIndexBuilder genome.fa.index region.bed region.bin -bed/-gff
