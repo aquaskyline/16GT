@@ -9,12 +9,14 @@
 #### 0. Install
 ```
 git clone https://github.com/aquaskyline/16GT
+cd 16GT
 make
 # Tested in Ubuntu 14.04 and CentOS 6.7 with GCC 4.7.2
 ```
 #### 1. Build reference index
 ```
 git clone https://github.com/aquaskyline/SOAP3-dp.git
+cd SOAP3-dp
 make SOAP3-Builder
 make BGS-Build
 soap3-dp-builder genome.fa
@@ -33,8 +35,8 @@ perl filterVCF.pl variants.vcf > variants.filtered.vcf
 
 ## Exome variant calling
 > Inputs: genome.fa alignement.bam region.bed
-
 > Outputs: region.bin variants.vcf
+
 ```
 RegionIndexBuilder genome.fa.index region.bed region.bin -bed/-gff
 bam2snapshot -i genome.fa.index -b alignments.bam -o output/prefix -e region.bin
