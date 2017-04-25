@@ -1,5 +1,7 @@
 # 16GT
 16GT is a variant caller utilizing a 16-genotype probabilistic model to unify SNP and indel calling in a single algorithm.
+16GT is easy to use. The default parameters will fit most of the use cases with human genome.
+For the detailed parameters for each module, please run the module to get an info.
 
 ## Quick start
 > Inputs: genome.fa alignments.bam, Output: variants.vcf
@@ -28,7 +30,7 @@ bam2snapshot -i genome.fa.index -b alignments.bam -o output/prefix
 ```
 snapshotSnpcaller -i genome.fa.index -o output/prefix
 perl txt2vcf.pl output/prefix.txt sampleName genome.fa > variants.vcf
-perl filterVCF.pl variants.vcf > variants.filtered.vcf
+perl filterVCF.pl variants.vcf dbSNP.vcf.gz > variants.filtered.vcf
 ```
 
 ## Exome variant calling
