@@ -78,7 +78,6 @@ do { \
   unsigned int maxRegions = INIT_REGION_SIZE;
   unsigned int numRegions = 0;
   IndexRegion *indexRegion = (IndexRegion *) malloc(maxRegions * sizeof(IndexRegion));
-  printf("\e[?25l");
   while (1) {
     
     checkBuffer();
@@ -94,7 +93,7 @@ do { \
     checkBuffer();
 
     {
-      if (numRegions % 10000 == 0) printf("Handled %u entries    \n", numRegions);
+      if (numRegions % 10000 == 0) printf("Handled %u entries\n", numRegions);
       unsigned int namePtr = 0;
       do {
         if (namePtr >= MAX_SEQ_NAME_LENGTH - 1) {
@@ -127,7 +126,6 @@ do { \
       while (buffer[bufferPtr] != ' ' && buffer[bufferPtr] != '\t') {
         if (buffer[bufferPtr] < '0' || buffer[bufferPtr] > '9') {
           fprintf(stderr, "Error in parsing gff file : position is not a number\n");
-          printf("\e[?25h");
           exit(1);
         }
         chrPos0 = chrPos0 * 10 + buffer[bufferPtr++] - '0';
@@ -140,7 +138,6 @@ do { \
       while (buffer[bufferPtr] != ' ' && buffer[bufferPtr] != '\t' && buffer[bufferPtr] != '\n') {
         if (buffer[bufferPtr] < '0' || buffer[bufferPtr] > '9') {
           fprintf(stderr, "Error in parsing gff file : position is not a number\n");
-          printf("\e[?25h");
           exit(1);
         }
         chrPos1 = chrPos1 * 10 + buffer[bufferPtr++] - '0';
@@ -163,6 +160,9 @@ do { \
       } else {
         bufferPtr++;
       }
+
+      ++chrPos0;
+      ++chrPos1;
 
       chrID = getChrIDFromName(annotation, numOfSeq, chrName);
       if (chrID <= numOfSeq) {
