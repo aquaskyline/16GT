@@ -223,7 +223,7 @@ foreach my $fn (@files2bFiltered)
       elsif($a[2] ne ".")
       { print join "\t", @a; print "\n"; $typeSummary{"dbSNP"}++; }
       else
-      { $a[6] = join ",", @filterTag; print join "\t", @a; print "\n"; $typeSummary{"$a[6]"}++; }
+      { $a[6] = join ";", @filterTag; print join "\t", @a; print "\n"; $typeSummary{"$a[6]"}++; }
 
       $prev = $a[1];
     }
